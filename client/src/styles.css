@@ -513,6 +513,82 @@ textarea {
   font-size: 11px;
 }
 
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(38, 54, 79, .34);
+}
+
+.match-modal {
+  width: 100%;
+  border-radius: 14px;
+  background: white;
+  padding: 22px;
+  display: grid;
+  gap: 13px;
+  text-align: center;
+  box-shadow: 0 22px 42px rgba(38, 54, 79, .2);
+}
+
+.modal-icon {
+  width: 48px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  color: #12bf83;
+  background: #e8fbf4;
+}
+
+.match-modal h2 {
+  margin: 0;
+  color: #33415c;
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.match-modal p {
+  margin: 0;
+  color: #7f8fa3;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.modal-match-card {
+  border: 1px solid #e1eaef;
+  border-radius: 10px;
+  background: #f8fcfc;
+  padding: 13px;
+  display: grid;
+  gap: 5px;
+  text-align: left;
+}
+
+.modal-match-card strong {
+  color: #33415c;
+  font-size: 15px;
+}
+
+.modal-match-card small {
+  color: #92a0b2;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.modal-secondary {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: #8f9caf;
+  font-weight: 900;
+}
+
 .details-screen {
   padding-top: 0;
 }

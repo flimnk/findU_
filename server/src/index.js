@@ -201,6 +201,15 @@ function recalculateMatches(db) {
   db.matches = matches.sort((a, b) => b.score - a.score);
 }
 
+function hydrateMatches(db, matches) {
+  const itemsById = new Map(db.items.map((item) => [item.id, item]));
+  return matches.map((match) => ({
+    ...match,
+    itemA: itemsById.get(match.itemAId),
+    itemB: itemsById.get(match.itemBId)
+  }));
+}
+
 function publicUser(user) {
   const { passwordHash, ...safeUser } = user;
   return safeUser;
@@ -393,7 +402,8 @@ app.post('/api/items', auth, upload.single('image'), async (req, res) => {
   db.items.push(item);
   recalculateMatches(db);
   await writeDb(db);
-  res.status(201).json({ item, matches: db.matches.filter((match) => match.itemAId === item.id || match.itemBId === item.id) });
+  const createdItemMatches = hydrateMatches(db, db.matches.filter((match) => match.itemAId === item.id || match.itemBId === item.id));
+  res.status(201).json({ item, matches: createdItemMatches });
 });
 
 app.patch('/api/items/:id/status', auth, async (req, res) => {
@@ -407,9 +417,7 @@ app.patch('/api/items/:id/status', auth, async (req, res) => {
 });
 
 app.get('/api/matches', auth, (req, res) => {
-  const itemsById = new Map(req.db.items.map((item) => [item.id, item]));
-  const matches = req.db.matches
-    .map((match) => ({ ...match, itemA: itemsById.get(match.itemAId), itemB: itemsById.get(match.itemBId) }))
+  const matches = hydrateMatches(req.db, req.db.matches)
     .filter((match) => match.itemA?.institutionId === req.user.institutionId && match.itemB?.institutionId === req.user.institutionId);
   res.json(matches);
 });

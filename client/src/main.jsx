@@ -368,6 +368,7 @@ function CreateItemScreen({ institution, categories, goBack, onCreated }) {
     image: null
   });
   const [message, setMessage] = useState('');
+  const [matchSuggestion, setMatchSuggestion] = useState(null);
 
   useEffect(() => {
     if (firstCampus && !form.campusId) {
@@ -385,7 +386,28 @@ function CreateItemScreen({ institution, categories, goBack, onCreated }) {
       if (value !== null) body.append(key, value);
     });
     try {
-      await api('/api/items', { method: 'POST', body });
+      const result = await api('/api/items', { method: 'POST', body });
+      if (result.matches?.length) {
+        setMatchSuggestion({ item: result.item, match: result.matches[0] });
+      } else {
+        onCreated();
+      }
+    } catch (err) {
+      setMessage(err.message);
+    }
+  }
+
+  async function requestMatch() {
+    const createdItem = matchSuggestion.item;
+    const match = matchSuggestion.match;
+    const matchedItem = match.itemA?.id === createdItem.id ? match.itemB : match.itemA;
+    setMessage('');
+    try {
+      await Promise.all([
+        api(`/api/items/${createdItem.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'Em processo de match' }) }),
+        api(`/api/items/${matchedItem.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'Em processo de match' }) })
+      ]);
+      setMatchSuggestion(null);
       onCreated();
     } catch (err) {
       setMessage(err.message);
@@ -418,6 +440,43 @@ function CreateItemScreen({ institution, categories, goBack, onCreated }) {
         {message && <p className="error">{message}</p>}
         <button className="primary">Publicar Item</button>
       </form>
+      {matchSuggestion && (
+        <MatchSuggestionModal
+          suggestion={matchSuggestion}
+          institution={institution}
+          onConfirm={requestMatch}
+          onCancel={() => {
+            setMatchSuggestion(null);
+            onCreated();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function MatchSuggestionModal({ suggestion, institution, onConfirm, onCancel }) {
+  const createdItem = suggestion.item;
+  const match = suggestion.match;
+  const matchedItem = match.itemA?.id === createdItem.id ? match.itemB : match.itemA;
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="match-modal">
+        <span className="modal-icon"><Heart size={24} /></span>
+        <h2>Possivel match encontrado</h2>
+        <p>Encontramos um item com {match.score}% de compatibilidade com o cadastro que voce acabou de publicar.</p>
+        <div className="modal-match-card">
+          <span className={matchedItem.type === 'found' ? 'found-tag' : 'lost-tag'}>
+            {matchedItem.type === 'found' ? 'Encontrado' : 'Perdido'}
+          </span>
+          <strong>{matchedItem.name}</strong>
+          <small>{categoryLabel(matchedItem.category)} - {locationLabel(matchedItem, institution)}</small>
+          <small>{formatDate(matchedItem.eventDate)}</small>
+        </div>
+        <button className="primary" onClick={onConfirm}>Solicitar match</button>
+        <button className="modal-secondary" onClick={onCancel}>Agora nao</button>
+      </div>
     </div>
   );
 }
