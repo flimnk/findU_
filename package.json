@@ -1,0 +1,16 @@
+{
+  "name": "findu-mvp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FindU MVP - sistema universitario de achados e perdidos",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev": "npm run build && npm run start --prefix server",
+    "dev:client": "cd client && npm run dev",
+    "start": "npm run start --prefix server",
+    "build": "cd client && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

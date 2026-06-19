@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+server/data/findu-db.json
+server/uploads/
+*.log
+*.pid
