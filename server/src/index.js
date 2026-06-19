@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 3333;
 const JWT_SECRET = process.env.JWT_SECRET || 'findu-dev-secret';
 
 const categories = ['Documentos', 'Eletronicos', 'Mochilas', 'Chaves', 'Garrafas', 'Livros', 'Outros'];
-const statuses = ['Aberto', 'Em processo de match', 'Devolvido', 'Cancelado'];
+const statuses = ['Aberto', 'Em processo de match', 'Aguardando validacao', 'Devolvido', 'Cancelado'];
 const loginAttempts = new Map();
 
 await fs.mkdir(dataDir, { recursive: true });
@@ -28,7 +28,9 @@ await fs.mkdir(uploadDir, { recursive: true });
 
 async function readDb() {
   try {
-    return JSON.parse(await fs.readFile(dbPath, 'utf8'));
+    const db = JSON.parse(await fs.readFile(dbPath, 'utf8'));
+    db.matchRequests ||= [];
+    return db;
   } catch {
     const passwordHash = await bcrypt.hash('FindU@123', 10);
     const now = new Date().toISOString();
@@ -115,7 +117,8 @@ async function readDb() {
           createdAt: now
         }
       ],
-      matches: []
+      matches: [],
+      matchRequests: []
     };
     recalculateMatches(db);
     await writeDb(db);
@@ -414,6 +417,42 @@ app.patch('/api/items/:id/status', auth, async (req, res) => {
   recalculateMatches(req.db);
   await writeDb(req.db);
   res.json(item);
+});
+
+app.post('/api/match-requests', auth, async (req, res) => {
+  const db = req.db;
+  const { matchId, createdItemId, matchedItemId, proofText } = req.body;
+  const proof = String(proofText || '').trim();
+  if (!matchId || !createdItemId || !matchedItemId) return res.status(400).json({ message: 'Dados do match incompletos.' });
+  if (proof.length < 10) return res.status(400).json({ message: 'Informe um detalhe com pelo menos 10 caracteres.' });
+
+  const match = db.matches.find((candidate) => candidate.id === matchId);
+  const createdItem = db.items.find((item) => item.id === createdItemId && item.institutionId === req.user.institutionId);
+  const matchedItem = db.items.find((item) => item.id === matchedItemId && item.institutionId === req.user.institutionId);
+  if (!match || !createdItem || !matchedItem) return res.status(404).json({ message: 'Match ou item nao encontrado.' });
+  if (![match.itemAId, match.itemBId].includes(createdItemId) || ![match.itemAId, match.itemBId].includes(matchedItemId)) {
+    return res.status(400).json({ message: 'Itens nao pertencem ao match informado.' });
+  }
+
+  const request = {
+    id: nanoid(),
+    matchId,
+    createdItemId,
+    matchedItemId,
+    requesterUserId: req.user.id,
+    recipientUserId: matchedItem.userId,
+    proofText: proof,
+    status: 'Aguardando validacao',
+    createdAt: new Date().toISOString()
+  };
+
+  db.matchRequests ||= [];
+  db.matchRequests.push(request);
+  createdItem.status = 'Aguardando validacao';
+  matchedItem.status = 'Aguardando validacao';
+  recalculateMatches(db);
+  await writeDb(db);
+  res.status(201).json({ request, message: 'Solicitacao enviada para quem encontrou o item.' });
 });
 
 app.get('/api/matches', auth, (req, res) => {

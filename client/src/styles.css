@@ -581,6 +581,16 @@ textarea {
   font-weight: 800;
 }
 
+.modal-proof {
+  gap: 7px;
+  text-align: left;
+}
+
+.modal-proof textarea {
+  min-height: 88px;
+  font-size: 13px;
+}
+
 .modal-secondary {
   min-height: 44px;
   border: 0;
