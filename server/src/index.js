@@ -362,6 +362,27 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/api/me', auth, (req, res) => res.json(publicUser(req.user)));
 
+app.patch('/api/me', auth, async (req, res) => {
+  const db = req.db;
+  const { fullName, email, linkCode } = req.body;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedName = String(fullName || '').trim();
+  const normalizedLinkCode = String(linkCode || '').trim();
+
+  if (normalizedName.length < 3) return res.status(400).json({ message: 'Informe um nome valido.' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return res.status(400).json({ message: 'Por favor, insira um e-mail valido.' });
+  if (db.users.some((user) => user.id !== req.user.id && user.email === normalizedEmail)) return res.status(409).json({ message: 'Este e-mail ja esta cadastrado.' });
+  if (!/^[a-z0-9]+$/i.test(normalizedLinkCode)) return res.status(400).json({ message: 'Codigo de vinculo invalido para a instituicao selecionada.' });
+
+  req.user.fullName = normalizedName;
+  req.user.email = normalizedEmail;
+  req.user.linkCode = normalizedLinkCode;
+  req.user.updatedAt = new Date().toISOString();
+
+  await writeDb(db);
+  res.json(publicUser(req.user));
+});
+
 app.get('/api/items', auth, (req, res) => {
   const { q = '', category = '', type = '', status = '' } = req.query;
   const query = String(q).toLowerCase();

@@ -119,6 +119,12 @@ textarea {
   box-shadow: 0 1px 4px rgba(31, 45, 61, .04);
 }
 
+input:disabled {
+  color: #8d9bad;
+  background: #eef4f6;
+  cursor: not-allowed;
+}
+
 input::placeholder,
 textarea::placeholder {
   color: #b0bbcb;
@@ -768,6 +774,14 @@ textarea {
   color: #8b99aa;
   font-size: 13px;
   font-weight: 800;
+}
+
+.profile-actions {
+  margin-bottom: 10px;
+}
+
+.secondary.neutral {
+  color: #33415c;
 }
 
 .bottom-nav {

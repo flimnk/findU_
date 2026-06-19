@@ -51,12 +51,18 @@ function App() {
     setScreen('login');
   }
 
+  function updateAuthUser(user) {
+    const nextAuth = { ...auth, user };
+    localStorage.setItem('findu-auth', JSON.stringify(nextAuth));
+    setAuth(nextAuth);
+  }
+
   return (
     <main className="page">
       {!auth ? (
         <AuthFlow screen={screen} setScreen={setScreen} onAuth={persistAuth} />
       ) : (
-        <FindUApp auth={auth} screen={screen} setScreen={setScreen} logout={logout} />
+        <FindUApp auth={auth} screen={screen} setScreen={setScreen} logout={logout} onUserUpdate={updateAuthUser} />
       )}
     </main>
   );
@@ -236,7 +242,7 @@ function PasswordRules({ strong, password }) {
   );
 }
 
-function FindUApp({ auth, screen, setScreen, logout }) {
+function FindUApp({ auth, screen, setScreen, logout, onUserUpdate }) {
   const [meta, setMeta] = useState({ categories: [], statuses: [] });
   const [institutions, setInstitutions] = useState([]);
   const [items, setItems] = useState([]);
@@ -276,14 +282,15 @@ function FindUApp({ auth, screen, setScreen, logout }) {
     feed: <FeedScreen auth={auth} items={items} institution={institution} filters={filters} setFilters={setFilters} openDetails={openDetails} logout={logout} />,
     create: <CreateItemScreen institution={institution} categories={meta.categories} goBack={() => setScreen('feed')} onCreated={afterCreate} />,
     matches: <MatchesScreen matches={matches} openDetails={(item) => openDetails(item)} />,
-    profile: <ProfileScreen auth={auth} institution={institution} logout={logout} />,
+    profile: <ProfileScreen auth={auth} institution={institution} logout={logout} openEdit={() => setScreen('editProfile')} />,
+    editProfile: <EditProfileScreen auth={auth} institution={institution} goBack={() => setScreen('profile')} onUserUpdate={onUserUpdate} />,
     details: <DetailsScreen item={selectedItem || items[0]} institution={institution} goBack={() => setScreen('feed')} onChanged={() => setRefreshKey((value) => value + 1)} />
   }[screen] || null;
 
   return (
     <PhoneShell>
       {content}
-      {screen !== 'details' && screen !== 'create' && (
+      {screen !== 'details' && screen !== 'create' && screen !== 'editProfile' && (
         <BottomNav active={screen} setScreen={setScreen} />
       )}
     </PhoneShell>
@@ -583,7 +590,7 @@ function MatchesScreen({ matches, openDetails }) {
   );
 }
 
-function ProfileScreen({ auth, institution, logout }) {
+function ProfileScreen({ auth, institution, logout, openEdit }) {
   return (
     <div className="screen profile-screen">
       <header className="plain-title">
@@ -595,7 +602,58 @@ function ProfileScreen({ auth, institution, logout }) {
         <strong>{auth.user.fullName}</strong>
         <span>{auth.user.email}</span>
       </div>
+      <div className="profile-actions">
+        <button className="secondary neutral" onClick={openEdit}>Editar dados</button>
+      </div>
       <button className="secondary" onClick={logout}>Sair</button>
+    </div>
+  );
+}
+
+function EditProfileScreen({ auth, institution, goBack, onUserUpdate }) {
+  const [form, setForm] = useState({
+    fullName: auth.user.fullName || '',
+    email: auth.user.email || '',
+    cpf: auth.user.cpf || '',
+    linkCode: auth.user.linkCode || ''
+  });
+  const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event) {
+    event.preventDefault();
+    setMessage('');
+    setSaving(true);
+    try {
+      const user = await api('/api/me', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          fullName: form.fullName,
+          email: form.email,
+          linkCode: form.linkCode
+        })
+      });
+      onUserUpdate(user);
+      setMessage('Dados atualizados com sucesso.');
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="screen-scroll">
+      <Header title="Editar dados" onBack={goBack} />
+      <form onSubmit={submit} className="stack padded-form">
+        <label>Nome Completo<input value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required /></label>
+        <label>E-mail<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required /></label>
+        <label>CPF<input value={form.cpf} disabled /></label>
+        <label>Universidade<input value={institution?.name || 'Universidade'} disabled /></label>
+        <label>Codigo de Vinculo<input value={form.linkCode} onChange={(event) => setForm({ ...form, linkCode: event.target.value })} required /></label>
+        {message && <p className={message.includes('sucesso') ? 'success' : 'error'}>{message}</p>}
+        <button className="primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar alteracoes'}</button>
+      </form>
     </div>
   );
 }
