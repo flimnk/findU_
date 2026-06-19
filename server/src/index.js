@@ -241,7 +241,9 @@ const upload = multer({
 });
 
 const app = express();
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
+app.use(cors({
+  origin: process.env.CLIENT_ORIGIN || true
+}));
 app.use(express.json());
 app.use('/uploads', express.static(uploadDir));
 app.use(express.static(clientDistDir));
